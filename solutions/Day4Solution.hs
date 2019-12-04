@@ -10,11 +10,10 @@ parse :: String -> (Int, Int)
 parse = (\xs -> (read . head $ xs, read . head . tail $ xs)) . splitOn "-"
 
 solve4 :: (Int, Int) -> Int
-solve4 (m, n)
-    = length
-    . filter (\x -> ascends x && hasAdjacent x)
-    . map show
-    $ [m .. n]
+solve4 = length
+       . filter (\x -> ascends x && hasAdjacent x)
+       . map show
+       . (\(x, y) -> [x .. y])
 
 hasAdjacent :: String -> Bool
 hasAdjacent = any ((2 ==) . length) . group
