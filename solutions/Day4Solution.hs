@@ -1,23 +1,23 @@
 module Day4Solution where
 
+import Data.List (group)
 import Data.List.Split (splitOn)
 
-solve4p1IO :: FilePath -> IO ()
-solve4p1IO fp = print . solve4p1 . parse =<< readFile fp
+solve4IO :: FilePath -> IO ()
+solve4IO fp = print . solve4 . parse =<< readFile fp
 
 parse :: String -> (Int, Int)
 parse = (\xs -> (read . head $ xs, read . head . tail $ xs)) . splitOn "-"
 
-solve4p1 :: (Int, Int) -> Int
-solve4p1 (m, n)
+solve4 :: (Int, Int) -> Int
+solve4 (m, n)
     = length
     . filter (\x -> ascends x && hasAdjacent x)
     . map show
     $ [m .. n]
 
 hasAdjacent :: String -> Bool
-hasAdjacent [x]    = False
-hasAdjacent (x:xs) = x == head xs || hasAdjacent xs
+hasAdjacent = any ((2 ==) . length) . group
 
 ascends :: String -> Bool
 ascends [x]    = True
