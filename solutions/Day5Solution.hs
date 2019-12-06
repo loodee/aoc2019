@@ -1,5 +1,6 @@
 module Day5Solution where
 
+import Control.Monad (liftM)
 import Data.Char (digitToInt)
 import Data.List.Split (splitOn)
 import qualified Data.Map.Strict as M
@@ -29,13 +30,10 @@ solve5 fp = do
 parse :: String -> [Int]
 parse = map read . splitOn ","
 
--- prepInput :: (Int, Int) -> [Int] -> [Int]
--- prepInput (noun, verb) (x:_:_:xs) = x : noun : verb : xs
-
 -- | Takes an input tape and performs computations until halting,
 --   returning the output tape.
-run :: [Int] -> [Int]
-run = M.elems . compute 0 . M.fromList . zip [0 ..]
+run :: [Int] -> IO [Int]
+run = fmap M.elems . compute 0 . M.fromList . zip [0 ..]
 
 -- | Given an index, return the instruction and the next location of
 --   the program pointer.
@@ -76,7 +74,7 @@ parseInstruction index m =
           3 -> 1
           4 -> 1
 
-compute :: Int -> M.Map Int Int -> M.Map Int Int
+compute :: Int -> M.Map Int Int -> IO (M.Map Int Int)
 compute pointer m =
     let (Instruction opcode xs, newPointer) = parseInstruction pointer m
 
@@ -91,20 +89,23 @@ compute pointer m =
                                         0 -> m M.! param
                                         1 -> param
 
+        add x y = binOp x y (+) m
+        mul x y = binOp x y (*) m
+
      in
         case opcode of
-        99 -> m
+        99 -> return m
 
         1 -> compute newPointer
                 $ M.insert
                     (snd $ xs !! 2)
-                    (binOp (xs !! 0) (xs !! 1) (+) m)
+                    (add (xs !! 0) (xs !! 1))
                     m
 
         2 -> compute newPointer
                 $ M.insert
                     (snd $ xs !! 2)
-                    (binOp (xs !! 0) (xs !! 1) (*) m)
+                    (add (xs !! 0) (xs !! 1))
                     m
 
         3 -> undefined
