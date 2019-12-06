@@ -18,8 +18,27 @@ type Opcode = Int
 data Instruction = Instruction Opcode [(Mode, Param)]
     deriving (Eq, Show)
 
--- | Given an index, return the instruction and how many steps to move
---   afterwards.
+solve5 :: FilePath -> IO ()
+solve5 fp = do
+    tape <- parse <$> readFile fp
+
+    print tape
+
+    return ()
+
+parse :: String -> [Int]
+parse = map read . splitOn ","
+
+-- prepInput :: (Int, Int) -> [Int] -> [Int]
+-- prepInput (noun, verb) (x:_:_:xs) = x : noun : verb : xs
+
+-- | Takes an input tape and performs computations until halting,
+--   returning the output tape.
+run :: [Int] -> [Int]
+run = M.elems . compute 0 . M.fromList . zip [0 ..]
+
+-- | Given an index, return the instruction and the next location of
+--   the program pointer.
 parseInstruction :: Int -> M.Map Int Int -> (Instruction, Int)
 parseInstruction index m =
     if length modes /= length params
@@ -57,30 +76,40 @@ parseInstruction index m =
           3 -> 1
           4 -> 1
 
-solve5 :: FilePath -> IO ()
-solve5 fp = do
-    tape <- parse <$> readFile fp
+compute :: Int -> M.Map Int Int -> M.Map Int Int
+compute pointer m =
+    let (Instruction opcode xs, newPointer) = parseInstruction pointer m
 
-    print tape
+        binOp :: (Mode, Param)
+              -> (Mode, Param)
+              -> (Int -> Int -> Int)
+              -> M.Map Int Int
+              -> Int
+        binOp t1 t2 f m = getVal t1 `f` getVal t2
+            where 
+                getVal (mode, param) = case mode of
+                                        0 -> m M.! param
+                                        1 -> param
 
-    return ()
+     in
+        case opcode of
+        99 -> m
 
-parse :: String -> [Int]
-parse = map read . splitOn ","
+        1 -> compute newPointer
+                $ M.insert
+                    (snd $ xs !! 2)
+                    (binOp (xs !! 0) (xs !! 1) (+) m)
+                    m
 
--- prepInput :: (Int, Int) -> [Int] -> [Int]
--- prepInput (noun, verb) (x:_:_:xs) = x : noun : verb : xs
+        2 -> compute newPointer
+                $ M.insert
+                    (snd $ xs !! 2)
+                    (binOp (xs !! 0) (xs !! 1) (*) m)
+                    m
 
+        3 -> undefined
 
--- buildMap :: [Int] -> Map Int Int
--- buildMap = M.fromList . index 0
---     where
---         index :: Int -> [Int] -> [(Int, Int)]
---         index _ [] = []
---         index n (x:xs) = (n, x) : index (n + 1) xs
-
--- run :: Map Int Int -> [Int]
--- run = elems . compute 0
+        4 -> undefined
 
 -- compute :: Int -> Map Int Int -> Map Int Int
 -- compute i m
