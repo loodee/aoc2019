@@ -2,6 +2,7 @@ module Day5Solution where
 
 import Control.Monad (liftM)
 import Data.Char (digitToInt)
+import Data.Functor ((<&>))
 import Data.List.Split (splitOn)
 import qualified Data.Map.Strict as M
     ( Map
@@ -108,9 +109,14 @@ compute pointer m =
                     (add (xs !! 0) (xs !! 1))
                     m
 
-        3 -> undefined
+        3 -> putStr "Input > "
+            >> getLine
+            <&> read
+            >>= \input -> compute newPointer
+                            $ M.insert (m M.! snd (head xs)) input m
 
-        4 -> undefined
+        4 -> print (m M.! snd (head xs))
+            >> compute newPointer m
 
 -- compute :: Int -> Map Int Int -> Map Int Int
 -- compute i m
