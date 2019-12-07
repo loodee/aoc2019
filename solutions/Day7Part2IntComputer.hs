@@ -1,7 +1,7 @@
 -- Modified version of Intcode computer to not require
 -- input during program execution.
 
-module Day5Plus where
+module Day7Part2IntComputer where
 
 import Data.Char (digitToInt)
 import Data.Functor ((<&>))

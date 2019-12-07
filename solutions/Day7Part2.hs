@@ -1,8 +1,8 @@
-module Day7Part1 where
+module Day7Part2 where
 
 import Data.List (permutations)
 
-import Day5Plus (St (St), parse, runWithArgs)
+import Day7Part2IntComputer (St (St), parse, runWithArgs)
 
 type Tape = [Int]
 
