@@ -27,6 +27,7 @@ data St = St
     , stOutputs :: [Int]          -- Collected outputs during the run
     , stPointer :: Int            -- Program pointer.
     , stMap     :: M.Map Int Int  -- Map serving as an indexing of values.
+    , stHalted  :: Bool           -- True if the program has halted (99)
     } deriving (Eq, Show)
 
 readRunWithArgs :: FilePath -> [Int] -> IO St
@@ -38,16 +39,15 @@ runWithArgs :: [Int]  -- Program tape.
             -> [Int]  -- List of all inputs that the program will need.
             -> IO St
 runWithArgs tape inputs = do
-    let st = St (inputs ++ padding) [] 0 (M.fromList . zip [0 ..] $ tape)
-    run st
-    
-    where padding = replicate 50 0
+    let st = St inputs [] 0 (M.fromList . zip [0 ..] $ tape) False
+    compute st
+
+resumeExecution :: St -> [Int] -> IO St
+resumeExecution (St [] [] p m h) inputs = compute $ St inputs [] p m h
+resumeExecution _ _ = error "Non-empty input or output when resuming program"
 
 parse :: String -> [Int]
 parse = map read . splitOn ","
-
-run :: St -> IO St
-run = compute
 
 -- | Given an index, return the instruction contaning its opcode
 --   and its parameters, annotated with their modes.
@@ -95,7 +95,7 @@ parseInstruction pointer m =
                      ++ ") found at index (" ++ show pointer ++ ")"
 
 compute :: St -> IO St
-compute st@(St inputs@(i:is) outputs pointer m) =
+compute st@(St inputs outputs pointer m h) =
     let Instruction opcode ps = parseInstruction pointer m
 
         -- Default new pointer location provided the pointer is
@@ -119,7 +119,7 @@ compute st@(St inputs@(i:is) outputs pointer m) =
         mul = binOp (*)
 
         binBoolOp :: (Int -> Int -> Bool) -> IO St
-        binBoolOp op = compute $ St inputs outputs incPointer newMap
+        binBoolOp op = compute $ St inputs outputs incPointer newMap h
             where
                 boolToInt b = if b then 1 else 0
                 res = getVal (ps !! 0) `op` getVal (ps !! 1)
@@ -129,7 +129,7 @@ compute st@(St inputs@(i:is) outputs pointer m) =
         eq = binBoolOp (==)
 
         jumpIf :: Bool -> IO St
-        jumpIf b = compute $ St inputs outputs newPointer m
+        jumpIf b = compute $ St inputs outputs newPointer m h
             where
                 newPointer = if b == (getVal (head ps) /= 0)
                                 then getVal (ps !! 1)
@@ -138,20 +138,27 @@ compute st@(St inputs@(i:is) outputs pointer m) =
      in
         case opcode of
 
-        99 -> return st
+        99 -> return $ st { stHalted = True }
 
         1 -> compute
                 $ St inputs outputs incPointer
-                $ M.insert (snd $ ps !! 2) (add (ps !! 0) (ps !! 1)) m
+                    (M.insert (snd $ ps !! 2) (add (ps !! 0) (ps !! 1)) m)
+                    h
 
         2 -> compute
                 $ St inputs outputs incPointer
-                $ M.insert (snd $ ps !! 2) (mul (ps !! 0) (ps !! 1)) m
+                    (M.insert (snd $ ps !! 2) (mul (ps !! 0) (ps !! 1)) m)
+                    h
 
-        3 -> compute
-                $ St is outputs incPointer $ M.insert (snd $ head ps) i m
+        3 -> if null inputs
+                then return st
+                else compute $ St (tail inputs)
+                                  outputs
+                                  incPointer
+                                  (M.insert (snd $ head ps) (head inputs) m)
+                                  h
 
-        4 -> compute (St inputs (getVal (head ps) : outputs) incPointer m)
+        4 -> compute $ St inputs (getVal (head ps) : outputs) incPointer m h
 
         5 -> jumpIf True
 

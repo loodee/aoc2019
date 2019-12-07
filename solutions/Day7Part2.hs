@@ -2,7 +2,11 @@ module Day7Part2 where
 
 import Data.List (permutations)
 
-import Day7Part2IntComputer (St (St), parse, runWithArgs)
+import Day7Part2IntComputer
+    ( St (St, stOutputs)
+    , parse
+    , resumeExecution
+    , runWithArgs)
 
 type Tape = [Int]
 
@@ -10,23 +14,35 @@ solve7p1 :: FilePath -> IO ()
 solve7p1 fp = do
     tape <- parse <$> readFile fp
 
-    print =<< bruteForce tape (permutations [0 .. 4]) 0
+    return ()
 
--- Given all permutations of phase settings, finds the highest
--- possible output signal
-bruteForce :: Tape -> [[Int]] -> Int -> IO Int
-bruteForce _ [] maxSignal = return maxSignal
-bruteForce tape (x:xs) best = do
-    signal <- calcThrusters tape x 0
-    bruteForce tape xs $ max signal best
+numAmps :: Int
+numAmps = 5
 
-calcThrusters :: Tape -> [Int] -> Int -> IO Int
-calcThrusters _ [] outputSignal = return outputSignal
-calcThrusters tape (phaseSetting : ps) inputSignal = do
-    nextSignal <- calcSignal tape [phaseSetting, inputSignal]
-    calcThrusters tape ps nextSignal
 
-calcSignal :: Tape -> [Int] -> IO Int
-calcSignal tape inputs = do
-    St _ outputs _ _ <- runWithArgs tape inputs
-    return (head outputs)
+
+-- | Puts the feedback loop into action for one combination
+--   of phase settings.
+startAmplificationH :: Tape     -- Program tape.
+                    -> [Int]    -- One combination of phase settings.
+                    -> [Int]    -- Initial inputs.
+                    -> IO [St]  -- Running amplifiers.
+startAmplificationH _ [] _ = return []
+startAmplificationH tape (phaseSetting : ps) inputs = do
+    postSt@(St _ outputs _ _ _) <- runWithArgs tape (phaseSetting : inputs)
+    xs <- startAmplificationH tape ps (reverse outputs)
+    return $ postSt { stOutputs = [] } : xs
+
+-- | Loop an amplification run for one combination of phase settings
+--   and return the output signal after halting.
+runAmplification :: [St]   -- States of running amplifiers.
+                 -> [Int]  -- New input for the active (1st in line) amp.
+                 -> IO Int -- Output signal once halted.
+runAmplification (st : sts) inputs = do
+    postSt@(St _ outputs _ _ halted) <- resumeExecution st inputs
+    if halted
+        then if null sts
+                then return $ head outputs
+                else runAmplification sts (reverse outputs)
+        else runAmplification
+                (sts ++ [postSt { stOutputs = [] }]) (reverse outputs)
