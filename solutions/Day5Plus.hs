@@ -151,8 +151,7 @@ compute st@(St inputs@(i:is) outputs pointer m) =
         3 -> compute
                 $ St is outputs incPointer $ M.insert (snd $ head ps) i m
 
-        4 -> print (getVal $ head ps)
-            >> compute (St inputs (getVal (head ps) : outputs) incPointer m)
+        4 -> compute (St inputs (getVal (head ps) : outputs) incPointer m)
 
         5 -> jumpIf True
 
