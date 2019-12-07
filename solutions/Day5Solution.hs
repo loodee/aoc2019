@@ -1,6 +1,5 @@
 module Day5Solution where
 
-import Control.Monad (liftM)
 import Data.Char (digitToInt)
 import Data.Functor ((<&>))
 import Data.List.Split (splitOn)
@@ -20,12 +19,11 @@ type Opcode = Int
 data Instruction = Instruction Opcode [(Mode, Param)]
     deriving (Eq, Show)
 
-solve5 :: FilePath -> IO ()
-solve5 fp = do
-    tape <- parse <$> readFile fp
-
-    print tape
-
+solve5p1 :: FilePath -> IO ()
+solve5p1 fp = do
+    putStrLn $ "To run the TEST diagnostic program (and solve part 1),"
+             ++ " enter '1' at the prompt."
+    run . parse =<< readFile fp
     return ()
 
 parse :: String -> [Int]
@@ -74,27 +72,32 @@ parseInstruction index m =
           2 -> 3
           3 -> 1
           4 -> 1
+          _ -> error $ "Invalid opcode (" ++ show opcode
+                     ++ ") found at index (" ++ show index ++ ")"
 
 compute :: Int -> M.Map Int Int -> IO (M.Map Int Int)
 compute pointer m =
     let (Instruction opcode xs, newPointer) = parseInstruction pointer m
 
-        binOp :: (Mode, Param)
-              -> (Mode, Param)
-              -> (Int -> Int -> Int)
-              -> M.Map Int Int
-              -> Int
-        binOp t1 t2 f m = getVal t1 `f` getVal t2
-            where 
-                getVal (mode, param) = case mode of
-                                        0 -> m M.! param
-                                        1 -> param
+        -- | Returns the proper value from a Mode/Param pair, depending
+        --   on the Mode.
+        getVal :: (Mode, Param) -> Param
+        getVal (mode, param) = case mode of
+                                0 -> m M.! param
+                                1 -> param
 
-        add x y = binOp x y (+) m
-        mul x y = binOp x y (*) m
+        binOp :: (Int -> Int -> Int)
+              -> (Mode, Param)
+              -> (Mode, Param)
+              -> Int
+        binOp op t1 t2 = getVal t1 `op` getVal t2
+
+        add = binOp (+)
+        mul = binOp (*)
 
      in
         case opcode of
+
         99 -> return m
 
         1 -> compute newPointer
@@ -106,32 +109,14 @@ compute pointer m =
         2 -> compute newPointer
                 $ M.insert
                     (snd $ xs !! 2)
-                    (add (xs !! 0) (xs !! 1))
+                    (mul (xs !! 0) (xs !! 1))
                     m
 
         3 -> putStr "Input > "
             >> getLine
             <&> read
             >>= \input -> compute newPointer
-                            $ M.insert (m M.! snd (head xs)) input m
+                            $ M.insert (snd $ head xs) input m
 
-        4 -> print (m M.! snd (head xs))
+        4 -> print (getVal $ head xs)
             >> compute newPointer m
-
--- compute :: Int -> Map Int Int -> Map Int Int
--- compute i m
---     | opcode == 99 = m
---     | otherwise = let (n1, n2, loc) = comp i m in
---         compute (i + 4) $ M.insert loc (n1 `op` n2) m
---     where
---         opcode = fromJust $ M.lookup i m
---         op = case opcode of
---             1 -> (+)
---             2 -> (*)
-
--- comp :: Int -> Map Int Int -> (Int, Int, Int)
--- comp i m = ( fromJust (M.lookup n1 m)
---            , fromJust (M.lookup n2 m)
---            , loc
---            )
---     where [n1, n2, loc] = mapMaybe (\x -> M.lookup (i + x) m) [1 .. 3]
