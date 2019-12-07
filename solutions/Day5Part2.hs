@@ -19,8 +19,8 @@ type Opcode = Int
 data Instruction = Instruction Opcode [(Mode, Param)]
     deriving (Eq, Show)
 
-solve5p1 :: FilePath -> IO ()
-solve5p1 fp = do
+solve5p2 :: FilePath -> IO ()
+solve5p2 fp = do
     putStrLn $ "To run the TEST diagnostic program (and solve part 1),"
              ++ " enter '1' at the prompt."
     run . parse =<< readFile fp
@@ -83,6 +83,10 @@ compute :: Int -> M.Map Int Int -> IO (M.Map Int Int)
 compute pointer m =
     let Instruction opcode ps = parseInstruction pointer m
 
+        -- Default new pointer location provided the pointer is
+        -- not otherwise explicitly set.
+        incPointer = pointer + length ps + 1
+
         -- | Returns the proper value from a Mode/Param pair, depending
         --   on the Mode.
         getVal :: (Mode, Param) -> Param
@@ -99,7 +103,22 @@ compute pointer m =
         add = binOp (+)
         mul = binOp (*)
 
-        incPointer = pointer + length ps + 1
+        binBoolOp :: (Int -> Int -> Bool) -> IO (M.Map Int Int)
+        binBoolOp op = compute incPointer newMap
+            where
+                boolToInt b = if b then 1 else 0
+                res = getVal (ps !! 0) `op` getVal (ps !! 1)
+                newMap = M.insert (snd $ ps !! 2) (boolToInt res) m
+
+        lt = binBoolOp (<)
+        eq = binBoolOp (==)
+
+        jumpIf :: Bool -> IO (M.Map Int Int)
+        jumpIf b = compute newPointer m
+            where
+                newPointer = if b == (getVal (head ps) /= 0)
+                                then getVal (ps !! 1)
+                                else incPointer
 
      in
         case opcode of
@@ -110,10 +129,7 @@ compute pointer m =
                 $ M.insert (snd $ ps !! 2) (add (ps !! 0) (ps !! 1)) m
 
         2 -> compute incPointer
-                $ M.insert
-                    (snd $ ps !! 2)
-                    (mul (ps !! 0) (ps !! 1))
-                    m
+                $ M.insert (snd $ ps !! 2) (mul (ps !! 0) (ps !! 1)) m
 
         3 -> putStr "Input > "
             >> getLine
@@ -124,10 +140,10 @@ compute pointer m =
         4 -> print (getVal $ head ps)
             >> compute incPointer m
 
-        5 -> undefined
+        5 -> jumpIf True
 
-        6 -> undefined
+        6 -> jumpIf False
 
-        7 -> undefined
+        7 -> lt
 
-        8 -> undefined
+        8 -> eq
