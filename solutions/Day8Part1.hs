@@ -1,6 +1,5 @@
 module Day8Part1 where
 
-import Data.Char (intToDigit)
 import Data.List (minimumBy)
 
 width  = 25
@@ -23,4 +22,3 @@ count n = length . filter (== n)
 
 fewest :: Eq a => a -> [[a]] -> [a]
 fewest c = minimumBy (\xs ys -> count c xs `compare` count c ys)
-
