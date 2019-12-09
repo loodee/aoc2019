@@ -2,8 +2,8 @@ module Day9Part1 where
 
 import Data.Char (digitToInt)
 import Data.List.Split (splitOn)
-import qualified Data.Map.Strict as M
-    ( Map
+import qualified Data.IntMap.Strict as IM
+    ( IntMap
     , elems
     , fromList
     , insert
@@ -24,7 +24,7 @@ data St = St
     { stInputs  :: [Int]          -- All inputs that the program will need while running.
     , stOutputs :: [Int]          -- Collected outputs during the run
     , stPointer :: Int            -- Program pointer.
-    , stMap     :: M.Map Int Int  -- Map serving as an indexing of values.
+    , stMap     :: IM.IntMap Int  -- Map serving as an indexing of values.
     , stHalted  :: Bool           -- True if the program has halted (99)
     } deriving (Eq, Show)
 
@@ -43,21 +43,21 @@ runWithArgs tape inputs =
     let st = St { stInputs  = inputs
                 , stOutputs = []
                 , stPointer = 0
-                , stMap     = M.fromList . zip [0 ..] $ tape
+                , stMap     = IM.fromList . zip [0 ..] $ tape
                 , stHalted  = False
                 }
     in step st
 
 -- | Given an index, return the instruction contaning its opcode
 --   and its parameters, annotated with their modes.
-parseInstruction :: Int -> M.Map Int Int -> Instruction
+parseInstruction :: Int -> IM.IntMap Int -> Instruction
 parseInstruction pointer m =
     if length modes /= length params
         then error "Non-matching length of modes and params!"
         else Instruction opcode (zip modes params)
 
     where
-        instructionBase = m M.! pointer
+        instructionBase = m IM.! pointer
         opcodeLength = 2
 
         opcode :: Opcode
@@ -77,7 +77,7 @@ parseInstruction pointer m =
               $ instructionBase
 
         params :: [Param]
-        params = map (m M.!) [pointer + 1 .. pointer + numParams]
+        params = map (m IM.!) [pointer + 1 .. pointer + numParams]
 
         numParams :: Int
         numParams = case opcode of
@@ -106,7 +106,7 @@ step st@(St inputs outputs pointer m h) =
       --   on the Mode.
       getVal :: (Mode, Param) -> Param
       getVal (mode, param) = case mode of
-                              0 -> fromMaybe 0 $ M.lookup param m
+                              0 -> fromMaybe 0 $ IM.lookup param m
                               1 -> param
 
       add :: St
@@ -121,7 +121,7 @@ step st@(St inputs outputs pointer m h) =
                               }
         where
           res = getVal (ps !! 0) `op` getVal (ps !! 1)
-          newMap = M.insert (snd $ ps !! 2) res m
+          newMap = IM.insert (snd $ ps !! 2) res m
 
       lt :: St
       lt = binBoolOp (<)
@@ -136,7 +136,7 @@ step st@(St inputs outputs pointer m h) =
         where
           boolToInt b = if b then 1 else 0
           res = getVal (ps !! 0) `op` getVal (ps !! 1)
-          newMap = M.insert (snd $ ps !! 2) (boolToInt res) m
+          newMap = IM.insert (snd $ ps !! 2) (boolToInt res) m
 
       jumpIfTrue :: St
       jumpIfTrue = jumpIf True
@@ -164,7 +164,7 @@ step st@(St inputs outputs pointer m h) =
             then st
             else step $ st { stInputs = tail inputs
                            , stPointer = incPointer
-                           , stMap = M.insert (snd $ head ps) (head inputs) m
+                           , stMap = IM.insert (snd $ head ps) (head inputs) m
                            }
 
       4 -> step $ St inputs (getVal (head ps) : outputs) incPointer m h
