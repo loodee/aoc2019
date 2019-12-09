@@ -10,6 +10,7 @@ import qualified Data.Map.Strict as M
     , lookup
     , (!)
     )
+import Data.Maybe (fromMaybe)
 
 type Mode = Int  -- 0 = Position mode, 1 = Immediate mode
 type Opcode = Int
@@ -105,7 +106,7 @@ step st@(St inputs outputs pointer m h) =
       --   on the Mode.
       getVal :: (Mode, Param) -> Param
       getVal (mode, param) = case mode of
-                              0 -> m M.! param
+                              0 -> fromMaybe 0 $ M.lookup param m
                               1 -> param
 
       add :: St
