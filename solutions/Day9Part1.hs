@@ -1,7 +1,6 @@
 module Day9Part1 where
 
 import Data.Char (digitToInt)
-import Data.Functor ((<&>))
 import Data.List.Split (splitOn)
 import qualified Data.Map.Strict as M
     ( Map
@@ -37,10 +36,15 @@ parse :: String -> [Int]
 parse = map read . splitOn ","
 
 runWithArgs :: Tape  -- Program tape.
-            -> [Int]  -- List of all inputs that the program will need.
+            -> [Int] -- List of all inputs that the program will need.
             -> St
 runWithArgs tape inputs =
-    let st = St inputs [] 0 (M.fromList . zip [0 ..] $ tape) False
+    let st = St { stInputs  = inputs
+                , stOutputs = []
+                , stPointer = 0
+                , stMap     = M.fromList . zip [0 ..] $ tape
+                , stHalted  = False
+                }
     in step st
 
 -- | Given an index, return the instruction contaning its opcode
@@ -104,24 +108,43 @@ step st@(St inputs outputs pointer m h) =
                               0 -> m M.! param
                               1 -> param
 
-      binOp :: (Int -> Int -> Int) -> (Mode, Param) -> (Mode, Param) -> Int
-      binOp op t1 t2 = getVal t1 `op` getVal t2
+      add :: St
+      add = binNumOp (+)
 
-      add = binOp (+)
-      mul = binOp (*)
+      mul :: St
+      mul = binNumOp (*)
+
+      binNumOp :: (Int -> Int -> Int) -> St
+      binNumOp op = step $ st { stMap = newMap
+                              , stPointer = incPointer
+                              }
+        where
+          res = getVal (ps !! 0) `op` getVal (ps !! 1)
+          newMap = M.insert (snd $ ps !! 2) res m
+
+      lt :: St
+      lt = binBoolOp (<)
+
+      eq :: St
+      eq = binBoolOp (==)
 
       binBoolOp :: (Int -> Int -> Bool) -> St
-      binBoolOp op = step $ St inputs outputs incPointer newMap h
+      binBoolOp op = step $ st { stMap = newMap
+                               , stPointer = incPointer
+                               }
         where
           boolToInt b = if b then 1 else 0
           res = getVal (ps !! 0) `op` getVal (ps !! 1)
           newMap = M.insert (snd $ ps !! 2) (boolToInt res) m
 
-      lt = binBoolOp (<)
-      eq = binBoolOp (==)
+      jumpIfTrue :: St
+      jumpIfTrue = jumpIf True
+
+      jumpIfFalse :: St
+      jumpIfFalse = jumpIf False
 
       jumpIf :: Bool -> St
-      jumpIf b = step $ St inputs outputs newPointer m h
+      jumpIf b = step $ st { stPointer = newPointer }
         where
           newPointer = if b == (getVal (head ps) /= 0)
                         then getVal (ps !! 1)
@@ -132,21 +155,16 @@ step st@(St inputs outputs pointer m h) =
 
       99 -> st { stHalted = True }
 
-      1 -> step $ St inputs outputs incPointer
-                    (M.insert (snd $ ps !! 2) (add (ps !! 0) (ps !! 1)) m)
-                    h
+      1 -> add
 
-      2 -> step $ St inputs outputs incPointer
-                    (M.insert (snd $ ps !! 2) (mul (ps !! 0) (ps !! 1)) m)
-                    h
+      2 -> mul
 
       3 -> if null inputs
             then st
-            else step $ St (tail inputs)
-                            outputs
-                            incPointer
-                            (M.insert (snd $ head ps) (head inputs) m)
-                            h
+            else step $ st { stInputs = tail inputs
+                           , stPointer = incPointer
+                           , stMap = M.insert (snd $ head ps) (head inputs) m
+                           }
 
       4 -> step $ St inputs (getVal (head ps) : outputs) incPointer m h
 
