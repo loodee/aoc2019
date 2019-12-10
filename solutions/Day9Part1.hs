@@ -1,3 +1,5 @@
+-- Solution for part 1 is identical to that of part 2
+
 module Day9Part1 where
 
 import Data.Char (digitToInt)
@@ -5,12 +7,12 @@ import Data.List.Split (splitOn)
 import qualified Data.IntMap.Strict as IM
     ( IntMap
     , elems
+    , findWithDefault
     , fromList
     , insert
     , lookup
     , (!)
     )
-import Data.Maybe (fromMaybe)
 
 type Mode = Int  -- 0 = Position mode, 1 = Immediate mode, 2 = Relative mode
 type Opcode = Int
@@ -118,9 +120,9 @@ step st@(St inputs outputs pointer m h relBase) =
         1 -> error "Attempted write in immediate mode!"
         2 -> param + relBase
       getVal R (mode, param) = case mode of
-        0 -> fromMaybe 0 $ IM.lookup param m
+        0 -> IM.findWithDefault 0 param m
         1 -> param
-        2 -> fromMaybe 0 $ IM.lookup (param + relBase) m
+        2 -> IM.findWithDefault 0 (param + relBase) m
 
       add :: St
       add = binNumOp (+)
