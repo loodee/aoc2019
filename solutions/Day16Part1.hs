@@ -18,6 +18,4 @@ fft xs = take (length xs) $ map (calcDigit xs) [1 .. ]
     pat n = tail . cycle . concatMap (replicate n) $ [0, 1, 0, -1]
 
     calcDigit :: [Int] -> Int -> Int
-    calcDigit input n = (% 10) . abs . sum . zipWith (*) input $ pat n
-      where
-        a % b = if b /= 0 then a `mod` b else 0
+    calcDigit input n = (`mod` 10) . abs . sum . zipWith (*) input $ pat n
