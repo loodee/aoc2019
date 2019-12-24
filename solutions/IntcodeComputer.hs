@@ -33,13 +33,10 @@ data St = St
     , stRelBase :: Int            -- Relative base value of computer.
     } deriving (Eq, Show)
 
-readRunWithArgs :: FilePath -> [Int] -> IO ()
+readRunWithArgs :: FilePath -> [Int] -> IO St
 readRunWithArgs fp inputs = do
     tape <- parse <$> readFile fp
-    mapM_ print
-      . (\(St _ outputs _ _ _ _) -> outputs)
-      . runWithArgs tape
-      $ inputs
+    return $ runWithArgs tape inputs
 
 parse :: String -> [Int]
 parse = map read . splitOn ","
